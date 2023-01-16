@@ -1,20 +1,53 @@
-# 部署打京豆
+# 打京豆部署
 
 ## 简介
 
-打京豆的脚本部署流程, 非脚本作者, 该仓库为使用说明, 每个月能打1500(不确定)左右, 如果你的计算机有安装Docker, 推荐使用[本地部署](#本地部署)方式, 没有就使用[腾讯云函数部署](#腾讯云函数部署), 不计划设计助力池.
+打京豆的脚本部署流程, 非脚本作者, 每个月能打1500左右, 使用方法查看[Docker部署方式](#Docker部署), 每个月需要更新一次cookie.
+
+注意这个仓库只有长期活动的脚本有效, 新活动的脚本需要去别的仓库找, 该仓库不更新脚本.
+
+农场需激活: JD APP->免费水果->选择任一水果(水果成熟后需要重复此步操作)
+
+
+## Docker部署
+
+需要熟悉Docker的使用方式
+
+1. 安装Docker
+2. 安装青龙面板(用于定时执行脚本):
+
+    - **windows**: docker run -dit -p 5700:5700 --name qinglong --hostname qinglong --restart unless-stopped whyour/qinglong:latest
+    - **linux**: docker run -dit -v ~/ql:/ql/data -p 5700:5700 --name qinglong --hostname qinglong --restart unless-stopped whyour/qinglong:latest
+    3. 在浏览器访问127.0.0.1:5700, 按照提示完成初始化
+3. 在青龙面板**右上角点击新建任务**, 配置:
+
+   - 命令: ql repo https://github.com/cweijan/JD_tencent_scf.git "src"  "test|new|test_index" "^jd[^_]|USER|sendNotify|sign_graphics_validate|JDJR|JDSign|ql"
+   - 定时规则: 50 0 0 * * *
+     ![img](image/README/1644410122098.png)
+4. 配置青龙面板
+
+   - 添加: export PT_KEY=""和export PT_PIN="", [获取方式点这里](./wiki/GetJdCookie.md)
+   - 如果执行任务失败, 修改GithubProxyUrl为GithubProxyUrl="" 
+     ![img](image/README/1644421618420.png)
+5. 回到定时任务面板, 点击任务的运行按钮, 就会拉取所有的脚本, 并定时执行这些脚本, 也可手动点击脚本旁边的按钮执行.
+
+![image](https://user-images.githubusercontent.com/27798227/153328329-b0854a0b-a279-4be9-aabe-f27fee1bb752.png)
+
+6. 多账号配置: 需要使用JD_COOKIE变量, 在配置文件中增加: export JD_COOKIE="pt_key=XXX;pt_pin=XXX;&pt_key=XXX;pt_pin=XXX;"
 
 ## 腾讯云函数部署
 
+**已废弃**, 2022.6.1后腾讯云函数不再免费, 每个月需要最低收费12.8元, 不推荐使用云函数方式部署了, 已使用云函数部署的建议立刻删掉.
+
 ### 开通云函数服务
 
-创建腾讯云账号, 依次进入 [SCF 云函数控制台](https://console.cloud.tencent.com/scf) 和 [SLS 控制台](https://console.cloud.tencent.com/sls) 开通相关服务，并创建相应[服务角色](https://console.cloud.tencent.com/cam/role)**SCF_QcsRole、SLS_QcsRole**, 腾讯云日志服务不再免费, 余额为0建议往账户里面充值1元, 防止欠费被禁用.
-
-> 为了确保权限足够，不要使用子账户！腾讯云账户需要[实名认证](https://console.cloud.tencent.com/developer/auth)才可使用。
+1. 创建腾讯云账号, 依次进入 [SCF 云函数控制台](https://console.cloud.tencent.com/scf) 和 [SLS 控制台](https://console.cloud.tencent.com/sls) 开通相关服务.
+2. 腾讯云日志服务不免费(很便宜), 余额为0建议往账户里面**充值1元**, 防止欠费被禁用.
+3. **非必须, 没有再创建**: 不使用子账户, 保证有**SCF_QcsRole、SLS_QcsRole**权限的[服务角色](https://console.cloud.tencent.com/cam/role).
 
 ### 配置环境变量
 
-创建github账号, **fork此仓库**或以此[仓库模板创建(推荐)](./wiki/importRepo.md), 仓库建立完成, 在**自己的仓库**内依次点击**settings->secrets->Actions**
+创建github账号, **fork此仓库**或以此[仓库为模板创建](./wiki/importRepo.md), 仓库建立完成, 在**自己的仓库**内依次点击**settings->secrets->Actions**
 
 通过点击**New repository secret**, 分别添加:
 
@@ -36,17 +69,22 @@
 1. 上传函数超时: 重新执行部署工作流直至成功
 2. 未配置TENCENT_FUNCTION_NAME参数, 不配置会导致失败, 这是腾讯云的bug
 
-### 日志和测试
+多账户配置方式:
+
+1. 通过[模板方式创建仓库](./wiki/importRepo.md)
+2. 编辑自己仓库src/jdCookie.js中的CookieJDs变量(文件内有配置方式介绍), 生成一个新提交.
+
+### 日志和执行
 
 点击云函数, 可在**日志查询**面板查看定时执行的任务日志.
 
 ![](image/README/1644476536637.png)
 
-手动测试流程:
+手动执行流程:
 
 1. 点击云函数->函数代码->切换到旧版编辑器
-2. 拉到编辑器下面, 就可以看到测试输入框了
-3. 将message修改中的内容修改为脚本对应的名称, 测试多个脚本通过&符号连接.
+2. 拉到编辑器下面, 可以看到测试输入框
+3. 将message修改中的内容修改为脚本对应的名称, 测试多个脚本通过&符号连接, 输入**all**则执行全部.
 
 ![img](image/README/1644476708924.png)
 
@@ -60,28 +98,13 @@
 
 ![](image/README/1644497801258.png)
 
-## 本地部署
 
-需要熟悉Docker的使用方式
+## 消息推送
 
-1. 安装Docker
-2. 安装青龙面板(用于定时执行脚本):
+当cookie失效后或获得京豆时进行消息推送, 将对应推送的**Token**加到**环境变量**即可推送
 
-   1. 运行青龙面板Docker镜像: `docker run -dit -v $PWD/ql/config:/ql/config -v $PWD/ql/log:/ql/log -v $PWD/ql/db:/ql/db -p 5600:5600 --name qinglong --hostname qinglong --restart always whyour/qinglong:latest`
-   2. 在浏览器访问127.0.0.1:5600, 按照提示完成初始化
-3. 在青龙面板**右上角点击新建任务**, 配置:
-
-   - 命令: ql repo https://github.com/cweijan/JD_tencent_scf.git "src"  "icon" "^jd[^_]|USER|sendNotify|sign_graphics_validate|JDJR|JDSign|ql"
-   - 定时规则: 50 */2 * * *
-     ![img](image/README/1644410122098.png)
-4. 配置青龙面板
-
-   - 添加: export PT_KEY=""和export PT_PIN="", [获取方式点这里](./wiki/GetJdCookie.md)
-   - 修改GithubProxyUrl为GithubProxyUrl=""
-     ![img](image/README/1644421618420.png)
-5. 回到定时任务面板, 点击任务的运行按钮, 就会拉取所有的脚本, 并定时执行这些脚本, 也可手动点击脚本旁边的按钮执行.
-
-![image](https://user-images.githubusercontent.com/27798227/153328329-b0854a0b-a279-4be9-aabe-f27fee1bb752.png)
+- [推送加](http://www.pushplus.plus/): PUSH_PLUS_TOKEN
+- [~~Server酱(不推荐)~~](https://sct.ftqq.com/sendkey): PUSH_KEY
 
 ## 特别声明
 
